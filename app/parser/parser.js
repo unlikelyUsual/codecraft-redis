@@ -114,7 +114,15 @@ class Parser {
         } else {
           return "$-1\r\n";
         }
-
+      case "RPUSH":
+        const [listName, listValue] = args;
+        if (listName in this.database) {
+          this.database[listName].value.push(listValue);
+          return `+${this.database[listName].value.length}\r\n`;
+        } else {
+          this.database[listName] = { value: [listValue] };
+          return `+${1}\r\n`;
+        }
       default:
         return `-ERR unknown command '${commandName}'\r\n`;
     }
