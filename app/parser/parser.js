@@ -1,6 +1,5 @@
 class Parser {
   constructor() {
-    // This object simulates the Redis in-memory key-value store.
     this.database = {};
   }
 
@@ -68,35 +67,53 @@ class Parser {
 
     switch (commandName.toUpperCase()) {
       case "ECHO":
-        // The ECHO command returns a bulk string of its single argument.
         const echoMessage = args[0] || "";
         return `+${echoMessage}\r\n`;
       case "PING":
-        // The PING command returns a simple string "PONG".
         return "+PONG\r\n";
       case "SET":
-        // The SET command stores a key-value pair.
-        const [key, value] = args;
+        const [key, value, setCommand, nextArg] = args;
+        const setComm = setCommand.toUpperCase();
         if (key && value) {
-          this.database[key] = value;
-          return "+OK\r\n"; // Simple string response for success.
+          let expire = null;
+          switch (setComm) {
+            case "EX":
+              const seconds = parseInt(nextArg, 10);
+              if (isNaN(seconds) || seconds <= 0) {
+                return "-ERR value is not an integer or out of range\r\n";
+              }
+              expire = Date.now() + seconds * 1000;
+              break;
+            case "PX":
+              const milliseconds = parseInt(nextArg, 10);
+              if (isNaN(milliseconds) || milliseconds <= 0) {
+                return "-ERR value is not an integer or out of range\r\n";
+              }
+              expire = Date.now() + milliseconds;
+              break;
+            default:
+              break;
+          }
+          this.database[key] = { value, expire };
+          return "+OK\r\n";
         } else {
           return "-ERR wrong number of arguments for 'set' command\r\n";
         }
       case "GET":
-        // The GET command retrieves a value by key.
         const [getKey] = args;
-        const storedValue = this.database[getKey];
-        if (storedValue !== undefined) {
-          return `$${Buffer.byteLength(
-            storedValue,
-            "utf8"
-          )}\r\n${storedValue}\r\n`;
+        const entry = this.database[getKey];
+        if (entry !== undefined) {
+          if (entry.expiry !== null && Date.now() > entry.expire) {
+            delete this.database[getKey];
+            return "$-1\r\n";
+          }
+          return `$${Buffer.byteLength(entry.value, "utf8")}\r\n${
+            entry.value
+          }\r\n`;
         } else {
-          return "$-1\r\n"; // Null bulk string for a missing key.
+          return "$-1\r\n";
         }
       default:
-        // Return a standard error for an unknown command.
         return `-ERR unknown command '${commandName}'\r\n`;
     }
   }
