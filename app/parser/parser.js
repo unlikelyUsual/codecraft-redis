@@ -118,10 +118,10 @@ class Parser {
         const [listName, listValue] = args;
         if (listName in this.database) {
           this.database[listName].value.push(listValue);
-          return `+${this.database[listName].value.length}\r\n`;
+          return this.database[listName].value.length;
         } else {
           this.database[listName] = { value: [listValue] };
-          return `+${1}\r\n`;
+          return 1;
         }
       default:
         return `-ERR unknown command '${commandName}'\r\n`;
