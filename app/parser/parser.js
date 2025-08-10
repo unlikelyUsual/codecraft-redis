@@ -73,7 +73,7 @@ class Parser {
         return "+PONG\r\n";
       case "SET":
         const [key, value, setCommand, nextArg] = args;
-        const setComm = setCommand.toUpperCase();
+        const setComm = setCommand?.toUpperCase() ?? "";
         if (key && value) {
           let expire = null;
           switch (setComm) {
