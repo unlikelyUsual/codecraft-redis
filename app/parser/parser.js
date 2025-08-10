@@ -102,8 +102,9 @@ class Parser {
       case "GET":
         const [getKey] = args;
         const entry = this.database[getKey];
+        console.log(entry);
         if (entry !== undefined) {
-          if (entry.expiry !== null && Date.now() > entry.expire) {
+          if (entry.expire !== null && Date.now() > entry.expire) {
             delete this.database[getKey];
             return "$-1\r\n";
           }
@@ -113,6 +114,7 @@ class Parser {
         } else {
           return "$-1\r\n";
         }
+
       default:
         return `-ERR unknown command '${commandName}'\r\n`;
     }
