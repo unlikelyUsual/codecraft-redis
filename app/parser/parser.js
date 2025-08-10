@@ -4,6 +4,31 @@ class Parser {
   }
 
   /**
+   * Converts a JavaScript value into a RESP formatted response string.
+   * This is the counterpart to parserSerializeString().
+   *
+   * @param {string | number | null} data The data to be serialized.
+   * @returns {string} A RESP formatted string.
+   */
+  serialize(data) {
+    const CRLF = "\r\n";
+    if (data === null) {
+      return `$-1${CRLF}`;
+    } else if (typeof data === "string") {
+      if (data.startsWith("+") || data.startsWith("-")) {
+        return `${data}${CRLF}`;
+      } else {
+        const byteLength = Buffer.byteLength(data, "utf8");
+        return `$${byteLength}${CRLF}${data}${CRLF}`;
+      }
+    } else if (typeof data === "number") {
+      return `:${data}${CRLF}`;
+    } else {
+      return `-ERR Unsupported data type\r\n`;
+    }
+  }
+
+  /**
    * A reverser function to parse a string in RESP format back into a JavaScript array.
    * This is the deserializer for the client, used to parse server responses.
    *
@@ -12,7 +37,6 @@ class Parser {
    * @returns {string[]} An array representing the parsed command.
    */
   parserSerializeString(string) {
-    // console.log(`Starting parsing`, string.replace("\n", "\\n"));
     let index = 0;
 
     function readUntilCRLF() {
@@ -118,10 +142,10 @@ class Parser {
         const [listName, listValue] = args;
         if (listName in this.database) {
           this.database[listName].value.push(listValue);
-          return this.database[listName].value.length;
+          return this.serialize(this.database[listName].value.length);
         } else {
           this.database[listName] = { value: [listValue] };
-          return 1;
+          return this.serialize(1);
         }
       default:
         return `-ERR unknown command '${commandName}'\r\n`;
