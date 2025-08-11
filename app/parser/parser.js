@@ -164,7 +164,7 @@ class Parser {
         }
 
         const startIndex = parseInt(start, 10);
-        const endIndex = parseInt(end, 10);
+        const endIndex = parseInt(end, 10) + 1; //for inclusion of last item
 
         if (isNaN(startIndex) || isNaN(endIndex)) {
           return `-ERR value is not an integer or out of range`;
