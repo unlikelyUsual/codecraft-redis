@@ -1,3 +1,5 @@
+// For more information :
+// https://redis.io/docs/latest/develop/reference/protocol-spec/#sending-commands-to-a-redis-server
 class Parser {
   constructor() {
     this.database = {};
