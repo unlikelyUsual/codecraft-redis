@@ -141,12 +141,12 @@ class Parser {
           return "$-1\r\n";
         }
       case "RPUSH":
-        const [listName, listValue] = args;
+        const [listName, ...listValues] = args;
         if (listName in this.database) {
-          this.database[listName].value.push(listValue);
+          this.database[listName].value.push(...listValues);
           return this.serialize(this.database[listName].value.length);
         } else {
-          this.database[listName] = { value: [listValue] };
+          this.database[listName] = { value: [...listValues] };
           return this.serialize(1);
         }
       default:
