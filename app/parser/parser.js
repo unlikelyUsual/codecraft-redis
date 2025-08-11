@@ -25,6 +25,14 @@ class Parser {
       }
     } else if (typeof data === "number") {
       return `:${data}${CRLF}`;
+    } else if (Array.isArray(data)) {
+      // Array response
+      let result = `*${data.length}${CRLF}`;
+      for (const item of data) {
+        // Recursively serialize each item in the array
+        result += this.serialize(item);
+      }
+      return result;
     } else {
       return `-ERR Unsupported data type\r\n`;
     }
@@ -148,6 +156,26 @@ class Parser {
           this.database[listName] = { value: [...listValues] };
         }
         return this.serialize(this.database[listName].value.length);
+      case "LRANGE":
+        const [lName, start, end] = args;
+
+        if (!lName) {
+          return `-ERR wrong number of arguments for LRANGE`;
+        }
+
+        const startIndex = parseInt(start, 10);
+        const endIndex = parseInt(end, 10);
+
+        if (isNaN(startIndex) || isNaN(endIndex)) {
+          return `-ERR value is not an integer or out of range`;
+        }
+
+        if (!lName in this.database) return this.serialize([]);
+        else {
+          return this.serialize(
+            this.database[lName].value.slice(startIndex, endIndex)
+          );
+        }
       default:
         return `-ERR unknown command '${commandName}'\r\n`;
     }
