@@ -170,7 +170,7 @@ class Parser {
           return `-ERR value is not an integer or out of range`;
         }
 
-        if (!lName in this.database) return this.serialize([]);
+        if (!(lName in this.database)) return this.serialize([]);
         else {
           return this.serialize(
             this.database[lName].value.slice(startIndex, endIndex)
