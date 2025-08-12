@@ -217,7 +217,7 @@ class Parser {
 
       if (start < 0) start = Math.max(value.length + start, 0);
       if (end < 0) end = value.length + end;
-      if (start >= value.length || start > end) return response;
+      if (start >= value.length || start > end) return this.serialize([]);
 
       return this.serialize(
         value.slice(start, Math.min(value.length, end + 1))
