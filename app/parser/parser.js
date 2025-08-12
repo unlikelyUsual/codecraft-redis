@@ -205,7 +205,7 @@ class Parser {
     }
 
     let start = parseInt(startIndex, 10);
-    let end = parseInt(endIndex, 10) + 1; //for inclusion of last item
+    let end = parseInt(endIndex, 10);
 
     if (isNaN(start) || isNaN(end)) {
       return `-ERR value is not an integer or out of range`;
