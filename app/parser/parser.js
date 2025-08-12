@@ -198,26 +198,29 @@ class Parser {
    * @returns {string} A RESP formatted string.
    */
   handleLrange(args) {
-    const [lName, start, end] = args;
+    const [lName, startIndex, endIndex] = args;
 
     if (!lName) {
       return `-ERR wrong number of arguments for LRANGE`;
     }
 
-    const startIndex = parseInt(start, 10);
-    const endIndex = parseInt(end, 10) + 1; //for inclusion of last item
+    let start = parseInt(startIndex, 10);
+    let end = parseInt(endIndex, 10) + 1; //for inclusion of last item
 
-    if (isNaN(startIndex) || isNaN(endIndex)) {
+    if (isNaN(start) || isNaN(end)) {
       return `-ERR value is not an integer or out of range`;
     }
 
     if (!(lName in this.database)) return this.serialize([]);
     else {
-      const len = this.database[lName].value.length;
-      const startEle = startIndex < 0 ? len + startIndex : startIndex;
-      const endEle = endIndex < 0 ? len + endIndex : endIndex;
+      const value = this.database[lName].value;
+
+      if (start < 0) start = Math.max(value.length + start, 0);
+      if (end < 0) end = value.length + end;
+      if (start >= value.length || start > end) return response;
+
       return this.serialize(
-        this.database[lName].value.slice(startEle, endEle + 1)
+        value.slice(start, Math.min(value.length, end + 1))
       );
     }
   }
