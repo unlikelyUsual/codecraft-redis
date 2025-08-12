@@ -73,6 +73,12 @@ class Parser {
 
       // Read the actual string data
       const bulkString = string.substring(index, index + length);
+      // Check for the CRLF after the bulk string data
+      if (string.substring(index + length, index + length + 2) !== "\r\n") {
+        throw new Error(
+          "Invalid RESP format: Missing CRLF after bulk string data."
+        );
+      }
       index += length + 2; // Move pointer past the string and the final CRLF
       return bulkString;
     }
@@ -96,88 +102,149 @@ class Parser {
     return result;
   }
 
+  /**
+   * Handles the ECHO command.
+   * @param {string[]} args - The arguments for the ECHO command.
+   * @returns {string} A RESP formatted string.
+   */
+  handleEcho(args) {
+    const echoMessage = args[0] || "";
+    return `+${echoMessage}\r\n`;
+  }
+
+  /**
+   * Handles the PING command.
+   * @returns {string} A RESP formatted string.
+   */
+  handlePing() {
+    return "+PONG\r\n";
+  }
+
+  /**
+   * Handles the SET command.
+   * @param {string[]} args - The arguments for the SET command.
+   * @returns {string} A RESP formatted string.
+   */
+  handleSet(args) {
+    const [key, value, setCommand, nextArg] = args;
+    const setComm = setCommand?.toUpperCase() ?? "";
+
+    if (!key || !value) {
+      return "-ERR wrong number of arguments for 'set' command\r\n";
+    }
+
+    let expire = null;
+    switch (setComm) {
+      case "EX":
+        const seconds = parseInt(nextArg, 10);
+        if (isNaN(seconds) || seconds <= 0) {
+          return "-ERR value is not an integer or out of range\r\n";
+        }
+        expire = Date.now() + seconds * 1000;
+        break;
+      case "PX":
+        const milliseconds = parseInt(nextArg, 10);
+        if (isNaN(milliseconds) || milliseconds <= 0) {
+          return "-ERR value is not an integer or out of range\r\n";
+        }
+        expire = Date.now() + milliseconds;
+        break;
+      default:
+        break;
+    }
+
+    this.database[key] = { value, expire };
+    return "+OK\r\n";
+  }
+
+  /**
+   * Handles the GET command.
+   * @param {string[]} args - The arguments for the GET command.
+   * @returns {string} A RESP formatted string.
+   */
+  handleGet(args) {
+    const [getKey] = args;
+    const entry = this.database[getKey];
+
+    if (entry !== undefined) {
+      if (entry.expire !== null && Date.now() > entry.expire) {
+        delete this.database[getKey];
+        return "$-1\r\n";
+      }
+      return `$${Buffer.byteLength(entry.value, "utf8")}\r\n${entry.value}\r\n`;
+    } else {
+      return "$-1\r\n";
+    }
+  }
+
+  /**
+   * Handles the RPUSH command.
+   * @param {string[]} args - The arguments for the RPUSH command.
+   * @returns {string} A RESP formatted string.
+   */
+  handleRpush(args) {
+    const [listName, ...listValues] = args;
+    if (listName in this.database) {
+      this.database[listName].value.push(...listValues);
+    } else {
+      this.database[listName] = { value: [...listValues] };
+    }
+    return this.serialize(this.database[listName].value.length);
+  }
+
+  /**
+   * Handles the LRANGE command.
+   * @param {string[]} args - The arguments for the LRANGE command.
+   * @returns {string} A RESP formatted string.
+   */
+  handleLrange(args) {
+    const [lName, start, end] = args;
+
+    if (!lName) {
+      return `-ERR wrong number of arguments for LRANGE`;
+    }
+
+    const startIndex = parseInt(start, 10);
+    const endIndex = parseInt(end, 10) + 1; //for inclusion of last item
+
+    if (isNaN(startIndex) || isNaN(endIndex)) {
+      return `-ERR value is not an integer or out of range`;
+    }
+
+    if (!(lName in this.database)) return this.serialize([]);
+    else {
+      return this.serialize(
+        this.database[lName].value.slice(startIndex, endIndex)
+      );
+    }
+  }
+
+  /**
+   * Maps command names to their respective handler methods.
+   * @type {Object.<string, Function>}
+   */
+  commandHandlers = {
+    ECHO: this.handleEcho,
+    PING: this.handlePing,
+    SET: this.handleSet,
+    GET: this.handleGet,
+    RPUSH: this.handleRpush,
+    LRANGE: this.handleLrange,
+  };
+
+  /**
+   * Dispatches the command to the appropriate handler.
+   * @param {string[]} command - The parsed command array (e.g., ["SET", "key", "value"]).
+   * @returns {string} A RESP formatted response string.
+   */
   handleCommand(command) {
     const [commandName, ...args] = command;
+    const handler = this.commandHandlers[commandName.toUpperCase()];
 
-    switch (commandName.toUpperCase()) {
-      case "ECHO":
-        const echoMessage = args[0] || "";
-        return `+${echoMessage}\r\n`;
-      case "PING":
-        return "+PONG\r\n";
-      case "SET":
-        const [key, value, setCommand, nextArg] = args;
-        const setComm = setCommand?.toUpperCase() ?? "";
-        if (key && value) {
-          let expire = null;
-          switch (setComm) {
-            case "EX":
-              const seconds = parseInt(nextArg, 10);
-              if (isNaN(seconds) || seconds <= 0) {
-                return "-ERR value is not an integer or out of range\r\n";
-              }
-              expire = Date.now() + seconds * 1000;
-              break;
-            case "PX":
-              const milliseconds = parseInt(nextArg, 10);
-              if (isNaN(milliseconds) || milliseconds <= 0) {
-                return "-ERR value is not an integer or out of range\r\n";
-              }
-              expire = Date.now() + milliseconds;
-              break;
-            default:
-              break;
-          }
-          this.database[key] = { value, expire };
-          return "+OK\r\n";
-        } else {
-          return "-ERR wrong number of arguments for 'set' command\r\n";
-        }
-      case "GET":
-        const [getKey] = args;
-        const entry = this.database[getKey];
-        console.log(entry);
-        if (entry !== undefined) {
-          if (entry.expire !== null && Date.now() > entry.expire) {
-            delete this.database[getKey];
-            return "$-1\r\n";
-          }
-          return `$${Buffer.byteLength(entry.value, "utf8")}\r\n${
-            entry.value
-          }\r\n`;
-        } else {
-          return "$-1\r\n";
-        }
-      case "RPUSH":
-        const [listName, ...listValues] = args;
-        if (listName in this.database) {
-          this.database[listName].value.push(...listValues);
-        } else {
-          this.database[listName] = { value: [...listValues] };
-        }
-        return this.serialize(this.database[listName].value.length);
-      case "LRANGE":
-        const [lName, start, end] = args;
-
-        if (!lName) {
-          return `-ERR wrong number of arguments for LRANGE`;
-        }
-
-        const startIndex = parseInt(start, 10);
-        const endIndex = parseInt(end, 10) + 1; //for inclusion of last item
-
-        if (isNaN(startIndex) || isNaN(endIndex)) {
-          return `-ERR value is not an integer or out of range`;
-        }
-
-        if (!(lName in this.database)) return this.serialize([]);
-        else {
-          return this.serialize(
-            this.database[lName].value.slice(startIndex, endIndex)
-          );
-        }
-      default:
-        return `-ERR unknown command '${commandName}'\r\n`;
+    if (handler) {
+      return handler.call(this, args);
+    } else {
+      return `-ERR unknown command '${commandName}'\r\n`;
     }
   }
 }
