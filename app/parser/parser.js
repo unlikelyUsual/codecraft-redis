@@ -193,6 +193,21 @@ class Parser {
   }
 
   /**
+   * Handles the LPUSH command.
+   * @param {string[]} args - The arguments for the LPUSH command. similar to RPUSH but insert from left
+   * @returns {string} A RESP formatted string.
+   */
+  handleLpush(args) {
+    const [listName, ...listValues] = args;
+    if (listName in this.database) {
+      this.database[listName].value.push(...listValues.reverse());
+    } else {
+      this.database[listName] = { value: listValues.reverse() };
+    }
+    return this.serialize(this.database[listName].value.length);
+  }
+
+  /**
    * Handles the LRANGE command.
    * @param {string[]} args - The arguments for the LRANGE command.
    * @returns {string} A RESP formatted string.
@@ -236,6 +251,7 @@ class Parser {
     GET: this.handleGet,
     RPUSH: this.handleRpush,
     LRANGE: this.handleLrange,
+    LPUSH: this.handleLpush,
   };
 
   /**
