@@ -213,8 +213,11 @@ class Parser {
 
     if (!(lName in this.database)) return this.serialize([]);
     else {
+      const len = this.database[lName].value.length;
+      const startEle = startIndex < 0 ? len + startIndex : startIndex;
+      const endEle = endIndex < 0 ? len + endIndex : endIndex;
       return this.serialize(
-        this.database[lName].value.slice(startIndex, endIndex)
+        this.database[lName].value.slice(startEle, endEle + 1)
       );
     }
   }
