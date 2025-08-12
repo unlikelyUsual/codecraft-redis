@@ -244,6 +244,23 @@ class Parser {
   }
 
   /**
+   * Handles the LLEN command.
+   * @param {string[]} args - The arguments for the LRANGE command.
+   * @returns {number} A RESP formatted integer.
+   */
+  handleLlen(args) {
+    const [listName] = args;
+
+    if (!listName) {
+      return `-ERR wrong number of arguments for LRANGE`;
+    }
+
+    if (!(listName in this.database)) return this.serialize(0);
+
+    return this.serialize(this.database[listName].value.length);
+  }
+
+  /**
    * Maps command names to their respective handler methods.
    * @type {Object.<string, Function>}
    */
@@ -255,6 +272,7 @@ class Parser {
     RPUSH: this.handleRpush,
     LRANGE: this.handleLrange,
     LPUSH: this.handleLpush,
+    LLEN: this.handleLlen,
   };
 
   /**

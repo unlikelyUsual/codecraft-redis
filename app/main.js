@@ -1,10 +1,10 @@
 const net = require("net");
 const Parser = require("./parser/parser");
 
-// You can use print statements as follows for debugging, they'll be visible when running tests.
-console.log("Logs from your program will appear here!");
+console.log("Application Started!");
 
 const parser = new Parser();
+const PORT = 6379 || process.env.PORT;
 
 // Uncomment this block to pass the first stage
 const server = net.createServer((connection) => {
@@ -14,4 +14,4 @@ const server = net.createServer((connection) => {
   });
 });
 
-server.listen(6379, "127.0.0.1");
+server.listen(PORT, "127.0.0.1");
