@@ -200,7 +200,10 @@ class Parser {
   handleLpush(args) {
     const [listName, ...listValues] = args;
     if (listName in this.database) {
-      this.database[listName].value.push(...listValues.reverse());
+      this.database[listName].value = [
+        ...listValues.reverse(),
+        ...this.database[listName].value,
+      ];
     } else {
       this.database[listName] = { value: listValues.reverse() };
     }
