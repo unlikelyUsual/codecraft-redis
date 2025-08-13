@@ -173,6 +173,9 @@ class Parser {
     const entry = this.database[getKey];
 
     if (entry !== undefined) {
+      if (Array.isArray(entry.value)) {
+        return `-ERR WRONGTYPE Operation against a key holding the wrong kind of value\r\n`;
+      }
       if (entry.expire !== null && Date.now() > entry.expire) {
         delete this.database[getKey];
         return "$-1\r\n";
@@ -295,11 +298,10 @@ class Parser {
   }
 
   handleBLpop(args, socket) {
-    const { listName, timeout } = args;
-
-    const value = this.database[listName];
-    if (value) {
-      return this.serialize(value.shift());
+    const [listName, timeout] = args;
+    const data = this.database[listName];
+    if (data && data.value.length > 0) {
+      socket.write(this.serialize([listName, data.value.shift()]));
     } else {
       if (!this.socktes[listName]) {
         this.socktes[listName] = [];
@@ -307,13 +309,17 @@ class Parser {
 
       this.socktes[listName].push(socket);
 
+      console.log("ITEM LEN : ", this.socktes[listName].length === 1);
+
       if (this.socktes[listName].length === 1) {
-        this.emitter.on(`data:${listName}`, () => {
+        this.emitter.once(`data:${listName}`, () => {
           const sockt = this.socktes[listName].shift();
           const item = this.database[listName].value.shift();
 
-          if (socket && !socket.destroyed)
-            return this.serialize([listName, item]);
+          console.log("ITEM", item);
+
+          if (sockt && !sockt.destroyed)
+            sockt.write(this.serialize([listName, item]));
 
           if (
             this.socktes[listName].length > 0 &&

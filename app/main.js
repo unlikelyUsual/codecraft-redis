@@ -6,11 +6,13 @@ console.log("Application Started!");
 const parser = new Parser();
 const PORT = 6379 || process.env.PORT;
 
-// Uncomment this block to pass the first stage
 const server = net.createServer((connection) => {
   connection.on("data", (data) => {
     const commands = parser.parserSerializeString(data.toString());
-    connection.write(parser.handleCommand(commands, connection));
+    const response = parser.handleCommand(commands, connection);
+    if (response) {
+      connection.write(response);
+    }
   });
 });
 
