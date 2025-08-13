@@ -339,6 +339,7 @@ class Parser {
     LPUSH: this.handleLpush,
     LLEN: this.handleLlen,
     LPOP: this.handleLpop,
+    BLPOP: this.handleBLpop,
   };
 
   /**
@@ -346,12 +347,12 @@ class Parser {
    * @param {string[]} command - The parsed command array (e.g., ["SET", "key", "value"]).
    * @returns {string} A RESP formatted response string.
    */
-  handleCommand(command) {
+  handleCommand(command, socket) {
     const [commandName, ...args] = command;
     const handler = this.commandHandlers[commandName.toUpperCase()];
 
     if (handler) {
-      return handler.call(this, args);
+      return handler.call(this, args, socket);
     } else {
       return `-ERR unknown command '${commandName}'\r\n`;
     }

@@ -10,7 +10,7 @@ const PORT = 6379 || process.env.PORT;
 const server = net.createServer((connection) => {
   connection.on("data", (data) => {
     const commands = parser.parserSerializeString(data.toString());
-    connection.write(parser.handleCommand(commands));
+    connection.write(parser.handleCommand(commands, connection));
   });
 });
 
