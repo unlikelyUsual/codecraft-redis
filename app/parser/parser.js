@@ -1,8 +1,14 @@
+const { EventEmitter } = require("node:stream");
+
+class KeyEmitter extends EventEmitter {}
+
 // For more information :
 // https://redis.io/docs/latest/develop/reference/protocol-spec/#sending-commands-to-a-redis-server
 class Parser {
   constructor() {
     this.database = {};
+    this.socktes = {};
+    this.emitter = new KeyEmitter();
   }
 
   /**
@@ -189,6 +195,11 @@ class Parser {
     } else {
       this.database[listName] = { value: [...listValues] };
     }
+
+    if (listName in this.socktes && this.socktes[listName].length > 0) {
+      setImmediate(() => this.emitter.emit(`data:${listName}`));
+    }
+
     return this.serialize(this.database[listName].value.length);
   }
 
@@ -206,6 +217,10 @@ class Parser {
       ];
     } else {
       this.database[listName] = { value: listValues.reverse() };
+    }
+
+    if (listName in this.socktes && this.socktes[listName].length > 0) {
+      setImmediate(() => this.emitter.emit(`data:${listName}`));
     }
     return this.serialize(this.database[listName].value.length);
   }
@@ -245,19 +260,69 @@ class Parser {
 
   /**
    * Handles the LLEN command.
-   * @param {string[]} args - The arguments for the LRANGE command.
+   * @param {string[]} args - The arguments for the LLEN command.
    * @returns {number} A RESP formatted integer.
    */
   handleLlen(args) {
     const [listName] = args;
 
     if (!listName) {
-      return `-ERR wrong number of arguments for LRANGE`;
+      return `-ERR wrong number of arguments for LLEN`;
     }
 
     if (!(listName in this.database)) return this.serialize(0);
 
     return this.serialize(this.database[listName].value.length);
+  }
+
+  /**
+   * Handles the LPOP command.
+   * @param {string[]} args - The arguments for the LPOP command.
+   * @returns {number} A RESP formatted integer.
+   */
+  handleLpop(args) {
+    const [listName, deleteCount] = args;
+
+    if (!listName) {
+      return `-ERR wrong number of arguments for LPOP`;
+    }
+
+    if (deleteCount)
+      return this.serialize(
+        this.database[listName].value.splice(0, deleteCount)
+      );
+    else return this.serialize(this.database[listName].value.shift());
+  }
+
+  handleBLpop(args, socket) {
+    const { listName, timeout } = args;
+
+    const value = this.database[listName];
+    if (value) {
+      return this.serialize(value.shift());
+    } else {
+      if (!this.socktes[listName]) {
+        this.socktes[listName] = [];
+      }
+
+      this.socktes[listName].push(socket);
+
+      if (this.socktes[listName].length === 1) {
+        this.emitter.on(`data:${listName}`, () => {
+          const sockt = this.socktes[listName].shift();
+          const item = this.database[listName].value.shift();
+
+          if (socket && !socket.destroyed)
+            return this.serialize([listName, item]);
+
+          if (
+            this.socktes[listName].length > 0 &&
+            this.database[listName].value.length > 0
+          )
+            this.emitter.emit(`data:${listName}`);
+        });
+      }
+    }
   }
 
   /**
@@ -273,6 +338,7 @@ class Parser {
     LRANGE: this.handleLrange,
     LPUSH: this.handleLpush,
     LLEN: this.handleLlen,
+    LPOP: this.handleLpop,
   };
 
   /**
