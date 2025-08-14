@@ -1,3 +1,4 @@
+const { time } = require("node:console");
 const { EventEmitter } = require("node:stream");
 
 class KeyEmitter extends EventEmitter {}
@@ -307,16 +308,21 @@ class Parser {
         this.socktes[listName] = [];
       }
 
-      this.socktes[listName].push(socket);
+      if (timeout) {
+        //Delete the socket and
+        setTimeout(() => {
+          delete this.socktes[listName];
+          this.emitter.removeListener(`data:${listName}`, () => {});
+          if (!socket.destroyed) socket.write(this.serialize(null));
+        }, timeout * 1000);
+      }
 
-      console.log("ITEM LEN : ", this.socktes[listName].length === 1);
+      this.socktes[listName].push(socket);
 
       if (this.socktes[listName].length === 1) {
         this.emitter.once(`data:${listName}`, () => {
           const sockt = this.socktes[listName].shift();
           const item = this.database[listName].value.shift();
-
-          console.log("ITEM", item);
 
           if (sockt && !sockt.destroyed)
             sockt.write(this.serialize([listName, item]));
