@@ -181,7 +181,7 @@ class Parser {
         delete this.database[getKey];
         return "$-1\r\n";
       }
-      return this.serialize(entry.value);
+      return this.serialize(String(entry.value));
     } else {
       return "$-1\r\n";
     }
