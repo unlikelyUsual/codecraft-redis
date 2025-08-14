@@ -337,6 +337,25 @@ class Parser {
     }
   }
 
+  handleIncr(args) {
+    const [key] = args;
+    const val = this.database[key];
+    let num = Number(val?.value);
+
+    if (val && isNaN(num)) {
+      return this.serialize("ERR value is not an integer or out of range");
+    }
+
+    if (val && num) {
+      num++;
+    } else {
+      num = 1;
+    }
+
+    this.database[key] = { value: num, expire: null };
+    return this.serialize(num);
+  }
+
   /**
    * Maps command names to their respective handler methods.
    * @type {Object.<string, Function>}
@@ -352,6 +371,7 @@ class Parser {
     LLEN: this.handleLlen,
     LPOP: this.handleLpop,
     BLPOP: this.handleBLpop,
+    INCR: this.handleIncr,
   };
 
   /**

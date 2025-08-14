@@ -3,31 +3,58 @@
 This is a starting point for JavaScript solutions to the
 ["Build Your Own Redis" Challenge](https://codecrafters.io/challenges/redis).
 
-In this challenge, you'll build a toy Redis clone that's capable of handling
-basic commands like `PING`, `SET` and `GET`. Along the way we'll learn about
-event loops, the Redis protocol and more.
+This is code challenge for building Redis like storage from scratch.
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+## Features
 
-# Passing the first stage
+- **Redis Protocol Implementation**: Handles basic Redis commands like `PING`, `ECHO`, `SET`, and `GET`.
+- **Concurrency**: Manages multiple client connections using an event loop.
+- **Extensible**: Designed to be easily extended with more Redis commands and features.
 
-The entry point for your Redis implementation is in `app/main.js`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
+## Usage
+
+### Getting Started
+
+1.  **Clone the repository**:
+    ```sh
+    git clone https://github.com/unlikelyUsual/codecraft-redis.git
+    cd codecraft-redis
+    ```
+2.  **Ensure Node.js is installed**: This project requires Node.js (version 21 or higher).
+    You can download it from [nodejs.org](https://nodejs.org/).
+
+### Running the Redis Server
+
+To run your Redis server locally, execute the following command:
 
 ```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+./your_program.sh
 ```
 
-That's all!
+This will start the server, which is implemented in `app/main.js`.
 
-# Stage 2 & beyond
+### Submitting to CodeCrafters
 
-Note: This section is for stages 2 and beyond.
+If you're participating in the CodeCrafters challenge:
 
-1. Ensure you have `node (21)` installed locally
-1. Run `./your_program.sh` to run your Redis server, which is implemented in
-   `app/main.js`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+1.  Make your changes to the `app/main.js` file.
+2.  Commit your changes:
+    ```sh
+    git commit -am "Your commit message"
+    ```
+3.  Push your solution to CodeCrafters:
+    ```sh
+    git push origin master
+    ```
+    Test output will be streamed to your terminal on the CodeCrafters platform.
+
+## Contributing
+
+Contributions are welcome! If you'd like to contribute, please follow these steps:
+
+1.  Fork the repository.
+2.  Create a new branch (`git checkout -b feature/your-feature-name`).
+3.  Make your changes.
+4.  Commit your changes (`git commit -am 'Add new feature'`).
+5.  Push to the branch (`git push origin feature/your-feature-name`).
+6.  Create a new Pull Request.
