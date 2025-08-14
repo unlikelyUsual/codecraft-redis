@@ -181,7 +181,7 @@ class Parser {
         delete this.database[getKey];
         return "$-1\r\n";
       }
-      return `$${Buffer.byteLength(entry.value, "utf8")}\r\n${entry.value}\r\n`;
+      return this.serialize(entry.value);
     } else {
       return "$-1\r\n";
     }
