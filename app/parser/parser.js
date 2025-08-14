@@ -308,6 +308,8 @@ class Parser {
         this.socktes[listName] = [];
       }
 
+      this.socktes[listName].push(socket);
+
       if (timeout > 0) {
         //Delete the socket and
         setTimeout(() => {
@@ -316,8 +318,6 @@ class Parser {
           if (!socket.destroyed) socket.write(this.serialize(null));
         }, timeout * 1000);
       }
-
-      this.socktes[listName].push(socket);
 
       if (this.socktes[listName].length === 1) {
         this.emitter.once(`data:${listName}`, () => {
