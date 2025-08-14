@@ -308,7 +308,7 @@ class Parser {
         this.socktes[listName] = [];
       }
 
-      if (timeout) {
+      if (timeout > 0) {
         //Delete the socket and
         setTimeout(() => {
           delete this.socktes[listName];
