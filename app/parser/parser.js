@@ -343,7 +343,7 @@ class Parser {
     let num = Number(val?.value);
 
     if (val && isNaN(num)) {
-      return this.serialize("ERR value is not an integer or out of range");
+      return this.serialize("-ERR value is not an integer or out of range");
     }
 
     if (val && num) {
