@@ -526,10 +526,8 @@ class Parser {
 
     // If in transaction, queue the command instead of executing
     if (transactionState.inTransaction) {
-      if (isWrite) {
-        transactionState.queuedCommands.push(command);
-        return this.serialize("QUEUED");
-      } else return this.serialize(null);
+      transactionState.queuedCommands.push(command);
+      return this.serialize("QUEUED");
     }
 
     // Execute command normally
