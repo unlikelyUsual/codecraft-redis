@@ -486,13 +486,28 @@ class Parser {
    */
   handleCommand(command, socket) {
     const [commandName, ...args] = command;
-    const handler = this.commandHandlers[commandName.toUpperCase()];
+    const commandNameUpper = commandName.toUpperCase();
+    const handler = this.commandHandlers[commandNameUpper];
 
-    if (handler) {
+    const transactionState = this.getTransactionState(socket);
+
+    // Handle transaction control commands immediately
+    if (
+      commandNameUpper === "MULTI" ||
+      commandNameUpper === "EXEC" ||
+      commandNameUpper === "DISCARD"
+    ) {
       return handler.call(this, args, socket);
-    } else {
-      return `-ERR unknown command '${commandName}'\r\n`;
     }
+
+    // If in transaction, queue the command instead of executing
+    if (transactionState.inTransaction) {
+      transactionState.queuedCommands.push(command);
+      return "+QUEUED\r\n";
+    }
+
+    // Execute command normally
+    return handler.call(this, args, socket);
   }
 }
 
