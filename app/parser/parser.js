@@ -13,6 +13,28 @@ class Parser {
     this.transactions = {};
   }
 
+  WRITE_COMMANDS = [
+    "SET",
+    "DEL",
+    "LPUSH",
+    "RPUSH",
+    "XADD",
+    "LPOP",
+    "RPOP",
+    "INCR",
+    "DECR",
+    "APPEND",
+    "HSET",
+    "HDEL",
+    "SADD",
+    "SREM",
+    "ZADD",
+    "ZREM",
+  ];
+
+  isWriteCommand(commandName) {
+    return this.WRITE_COMMANDS.includes(commandName);
+  }
   /**
    * Converts a JavaScript value into a RESP formatted response string.
    * This is the counterpart to parserSerializeString().
@@ -491,6 +513,8 @@ class Parser {
 
     const transactionState = this.getTransactionState(socket);
 
+    const isWrite = this.isWriteCommand(commandNameUpper);
+
     // Handle transaction control commands immediately
     if (
       commandNameUpper === "MULTI" ||
@@ -502,8 +526,10 @@ class Parser {
 
     // If in transaction, queue the command instead of executing
     if (transactionState.inTransaction) {
-      transactionState.queuedCommands.push(command);
-      return this.serialize("QUEUED");
+      if (isWrite) {
+        transactionState.queuedCommands.push(command);
+        return this.serialize("QUEUED");
+      } else return this.serialize(null);
     }
 
     // Execute command normally
