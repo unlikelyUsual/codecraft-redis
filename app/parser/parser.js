@@ -503,7 +503,7 @@ class Parser {
     // If in transaction, queue the command instead of executing
     if (transactionState.inTransaction) {
       transactionState.queuedCommands.push(command);
-      return "+QUEUED\r\n";
+      return this.serialize("QUEUED");
     }
 
     // Execute command normally
