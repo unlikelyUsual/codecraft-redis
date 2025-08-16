@@ -10,6 +10,7 @@ class Parser {
     this.database = {};
     this.socktes = {};
     this.emitter = new KeyEmitter();
+    this.transactions = {};
   }
 
   /**
@@ -357,6 +358,107 @@ class Parser {
   }
 
   /**
+   * Gets the transaction state for a socket, creating one if it doesn't exist
+   * @param {Socket} socket - The socket connection
+   * @returns {Object} Transaction state object
+   */
+  getTransactionState(socket) {
+    if (!(socket in this.transactions)) {
+      this.transactions[socket] = {
+        inTransaction: false,
+        queuedCommands: [],
+      };
+    }
+    return this.transactions[socket];
+  }
+
+  /**
+   * Handles the MULTI command to start a transaction.
+   * @param {string[]} args - The arguments for the MULTI command.
+   * @param {Socket} socket - The socket connection.
+   * @returns {string} A RESP formatted string.
+   */
+  handleMulti(args, socket) {
+    const transactionState = this.getTransactionState(socket);
+
+    if (transactionState.inTransaction) {
+      return "-ERR MULTI calls can not be nested\r\n";
+    }
+
+    transactionState.inTransaction = true;
+    transactionState.queuedCommands = [];
+
+    return "+OK\r\n";
+  }
+
+  /**
+   * Handles the EXEC command to execute all queued commands in a transaction.
+   * @param {string[]} args - The arguments for the EXEC command.
+   * @param {Socket} socket - The socket connection.
+   * @returns {string} A RESP formatted string.
+   */
+  handleExec(args, socket) {
+    const transactionState = this.getTransactionState(socket);
+
+    if (!transactionState.inTransaction) {
+      return "-ERR EXEC without MULTI\r\n";
+    }
+
+    // Execute all queued commands
+    const results = [];
+    for (const queuedCommand of transactionState.queuedCommands) {
+      try {
+        // Execute the command directly without going through handleCommand
+        // to avoid transaction state checks
+        const [commandName, ...commandArgs] = queuedCommand;
+        const handler = this.commandHandlers[commandName.toUpperCase()];
+
+        if (
+          handler &&
+          commandName.toUpperCase() !== "MULTI" &&
+          commandName.toUpperCase() !== "EXEC" &&
+          commandName.toUpperCase() !== "DISCARD"
+        ) {
+          const result = handler.call(this, commandArgs, socket);
+          // Remove CRLF from individual results since they'll be part of an array
+          results.push(result.replace(/\r\n$/, ""));
+        } else {
+          results.push("-ERR unknown command '" + commandName + "'");
+        }
+      } catch (error) {
+        results.push("-ERR " + error.message);
+      }
+    }
+
+    // Reset transaction state
+    transactionState.inTransaction = false;
+    transactionState.queuedCommands = [];
+
+    // Return array of results
+    return this.serialize(results);
+  }
+
+  /**
+   * Handles the DISCARD command to discard all queued commands in a transaction.
+   * @param {string[]} args - The arguments for the DISCARD command.
+   * @param {Socket} socket - The socket connection.
+   * @returns {string} A RESP formatted string.
+   */
+  handleDiscard(args, socket) {
+    const transactionState = this.getTransactionState(socket);
+
+    if (!transactionState.inTransaction) {
+      return "-ERR DISCARD without MULTI\r\n";
+    }
+
+    // Reset transaction state
+    transactionState.inTransaction = false;
+    transactionState.queuedCommands = [];
+
+    return "+OK\r\n";
+  }
+
+  /**
    * Maps command names to their respective handler methods.
    * @type {Object.<string, Function>}
    */
@@ -372,6 +474,9 @@ class Parser {
     LPOP: this.handleLpop,
     BLPOP: this.handleBLpop,
     INCR: this.handleIncr,
+    MULTI: this.handleMulti,
+    EXEC: this.handleExec,
+    DISCARD: this.handleDiscard,
   };
 
   /**
