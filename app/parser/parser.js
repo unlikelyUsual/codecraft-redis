@@ -500,25 +500,19 @@ class Parser {
 
     const transactionState = this.getTransactionState(socket);
 
-    const isWrite = this.isWriteCommand(commandNameUpper);
-
-    // Handle transaction control commands immediately
-    if (
-      commandNameUpper === "MULTI" ||
-      commandNameUpper === "EXEC" ||
-      commandNameUpper === "DISCARD"
-    ) {
-      const result = handler.call(this, args, socket);
-      return this.serialize(result);
-    }
-
-    // If in transaction, queue the command instead of executing
+    // If client is in a transaction, only allow EXEC and DISCARD to be executed immediately
     if (transactionState.inTransaction) {
-      transactionState.queuedCommands.push(command);
-      return this.serialize("QUEUED");
+      if (commandNameUpper === "EXEC" || commandNameUpper === "DISCARD") {
+        const result = handler.call(this, args, socket);
+        return this.serialize(result);
+      } else {
+        // Queue all other commands
+        transactionState.queuedCommands.push(command);
+        return this.serialize("QUEUED");
+      }
     }
 
-    // Execute command normally
+    // Handle MULTI command and all other commands for non-transactional clients
     const result = handler.call(this, args, socket);
     return this.serialize(result);
   }
