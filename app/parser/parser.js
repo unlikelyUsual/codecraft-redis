@@ -444,7 +444,7 @@ class Parser {
     transactionState.queuedCommands = [];
 
     // Return array of results
-    return this.serialize(results);
+    return results;
   }
 
   /**
