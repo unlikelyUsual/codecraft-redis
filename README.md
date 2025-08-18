@@ -1,4 +1,4 @@
-[![progress-banner](https://backend.codecrafters.io/progress/redis/9a8f9d01-f557-4e51-bd17-c6879424a330)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+![progress-banner](https://backend.codecrafters.io/progress/redis/9a8f9d01-f557-4e51-bd17-c6879424a330)
 
 This is a starting point for JavaScript solutions to the
 ["Build Your Own Redis" Challenge](https://codecrafters.io/challenges/redis).

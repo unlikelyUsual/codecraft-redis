@@ -138,8 +138,7 @@ class Parser {
    * @returns {string} A RESP formatted string.
    */
   handleEcho(args) {
-    const echoMessage = args[0] || "";
-    return `+${echoMessage}\r\n`;
+    return args[0] || "";
   }
 
   /**
@@ -147,7 +146,7 @@ class Parser {
    * @returns {string} A RESP formatted string.
    */
   handlePing() {
-    return "+PONG\r\n";
+    return "+PONG";
   }
 
   /**
@@ -160,7 +159,7 @@ class Parser {
     const setComm = setCommand?.toUpperCase() ?? "";
 
     if (!key || !value) {
-      return "-ERR wrong number of arguments for 'set' command\r\n";
+      return "-ERR wrong number of arguments for 'set' command";
     }
 
     let expire = null;
@@ -168,14 +167,14 @@ class Parser {
       case "EX":
         const seconds = parseInt(nextArg, 10);
         if (isNaN(seconds) || seconds <= 0) {
-          return "-ERR value is not an integer or out of range\r\n";
+          return "-ERR value is not an integer or out of range";
         }
         expire = Date.now() + seconds * 1000;
         break;
       case "PX":
         const milliseconds = parseInt(nextArg, 10);
         if (isNaN(milliseconds) || milliseconds <= 0) {
-          return "-ERR value is not an integer or out of range\r\n";
+          return "-ERR value is not an integer or out of range";
         }
         expire = Date.now() + milliseconds;
         break;
@@ -184,7 +183,7 @@ class Parser {
     }
 
     this.database[key] = { value, expire };
-    return "+OK\r\n";
+    return "+OK";
   }
 
   /**
@@ -198,15 +197,15 @@ class Parser {
 
     if (entry !== undefined) {
       if (Array.isArray(entry.value)) {
-        return `-ERR WRONGTYPE Operation against a key holding the wrong kind of value\r\n`;
+        return `-ERR WRONGTYPE Operation against a key holding the wrong kind of value`;
       }
       if (entry.expire !== null && Date.now() > entry.expire) {
         delete this.database[getKey];
-        return "$-1\r\n";
+        return null;
       }
-      return this.serialize(String(entry.value));
+      return String(entry.value);
     } else {
-      return "$-1\r\n";
+      return null;
     }
   }
 
@@ -227,7 +226,7 @@ class Parser {
       setImmediate(() => this.emitter.emit(`data:${listName}`));
     }
 
-    return this.serialize(this.database[listName].value.length);
+    return this.database[listName].value.length;
   }
 
   /**
@@ -249,7 +248,7 @@ class Parser {
     if (listName in this.socktes && this.socktes[listName].length > 0) {
       setImmediate(() => this.emitter.emit(`data:${listName}`));
     }
-    return this.serialize(this.database[listName].value.length);
+    return this.database[listName].value.length;
   }
 
   /**
@@ -271,17 +270,15 @@ class Parser {
       return `-ERR value is not an integer or out of range`;
     }
 
-    if (!(lName in this.database)) return this.serialize([]);
+    if (!(lName in this.database)) return [];
     else {
       const value = this.database[lName].value;
 
       if (start < 0) start = Math.max(value.length + start, 0);
       if (end < 0) end = value.length + end;
-      if (start >= value.length || start > end) return this.serialize([]);
+      if (start >= value.length || start > end) return [];
 
-      return this.serialize(
-        value.slice(start, Math.min(value.length, end + 1))
-      );
+      return value.slice(start, Math.min(value.length, end + 1));
     }
   }
 
@@ -297,9 +294,9 @@ class Parser {
       return `-ERR wrong number of arguments for LLEN`;
     }
 
-    if (!(listName in this.database)) return this.serialize(0);
+    if (!(listName in this.database)) return 0;
 
-    return this.serialize(this.database[listName].value.length);
+    return this.database[listName].value.length;
   }
 
   /**
@@ -315,10 +312,8 @@ class Parser {
     }
 
     if (deleteCount)
-      return this.serialize(
-        this.database[listName].value.splice(0, deleteCount)
-      );
-    else return this.serialize(this.database[listName].value.shift());
+      return this.database[listName].value.splice(0, deleteCount);
+    else return this.database[listName].value.shift();
   }
 
   handleBLpop(args, socket) {
@@ -366,7 +361,7 @@ class Parser {
     let num = Number(val?.value);
 
     if (val && isNaN(num)) {
-      return this.serialize("-ERR value is not an integer or out of range");
+      return "-ERR value is not an integer or out of range";
     }
 
     if (val && num) {
@@ -376,7 +371,7 @@ class Parser {
     }
 
     this.database[key] = { value: num, expire: null };
-    return this.serialize(num);
+    return num;
   }
 
   /**
@@ -404,13 +399,13 @@ class Parser {
     const transactionState = this.getTransactionState(socket);
 
     if (transactionState.inTransaction) {
-      return "-ERR MULTI calls can not be nested\r\n";
+      return "-ERR MULTI calls can not be nested";
     }
 
     transactionState.inTransaction = true;
     transactionState.queuedCommands = [];
 
-    return "+OK\r\n";
+    return "+OK";
   }
 
   /**
@@ -423,27 +418,19 @@ class Parser {
     const transactionState = this.getTransactionState(socket);
 
     if (!transactionState.inTransaction) {
-      return "-ERR EXEC without MULTI\r\n";
+      return "-ERR EXEC without MULTI";
     }
 
     // Execute all queued commands
     const results = [];
     for (const queuedCommand of transactionState.queuedCommands) {
       try {
-        // Execute the command directly without going through handleCommand
-        // to avoid transaction state checks
         const [commandName, ...commandArgs] = queuedCommand;
         const handler = this.commandHandlers[commandName.toUpperCase()];
 
-        if (
-          handler &&
-          commandName.toUpperCase() !== "MULTI" &&
-          commandName.toUpperCase() !== "EXEC" &&
-          commandName.toUpperCase() !== "DISCARD"
-        ) {
+        if (handler) {
           const result = handler.call(this, commandArgs, socket);
-          // Remove CRLF from individual results since they'll be part of an array
-          results.push(result.replace(/\r\n$/, ""));
+          results.push(result);
         } else {
           results.push("-ERR unknown command '" + commandName + "'");
         }
@@ -470,14 +457,14 @@ class Parser {
     const transactionState = this.getTransactionState(socket);
 
     if (!transactionState.inTransaction) {
-      return "-ERR DISCARD without MULTI\r\n";
+      return "-ERR DISCARD without MULTI";
     }
 
     // Reset transaction state
     transactionState.inTransaction = false;
     transactionState.queuedCommands = [];
 
-    return "+OK\r\n";
+    return "+OK";
   }
 
   /**
@@ -521,7 +508,8 @@ class Parser {
       commandNameUpper === "EXEC" ||
       commandNameUpper === "DISCARD"
     ) {
-      return handler.call(this, args, socket);
+      const result = handler.call(this, args, socket);
+      return this.serialize(result);
     }
 
     // If in transaction, queue the command instead of executing
@@ -531,7 +519,8 @@ class Parser {
     }
 
     // Execute command normally
-    return handler.call(this, args, socket);
+    const result = handler.call(this, args, socket);
+    return this.serialize(result);
   }
 }
 
