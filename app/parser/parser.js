@@ -376,17 +376,23 @@ class Parser {
 
   /**
    * Gets the transaction state for a socket, creating one if it doesn't exist
-   * @param {Socket} socket - The socket connection
+   * @param {Socket} connection - The socket connection
    * @returns {Object} Transaction state object
    */
-  getTransactionState(socket) {
-    if (!(socket in this.transactions)) {
-      this.transactions[socket] = {
+  getTransactionState(connection) {
+    const id = [
+      connection.remoteAddress,
+      connection.remoteFamily,
+      connection.remotePort,
+    ].join("|");
+
+    if (!this.transactions[id]) {
+      this.transactions[id] = {
         inTransaction: false,
         queuedCommands: [],
       };
     }
-    return this.transactions[socket];
+    return this.transactions[id];
   }
 
   /**
@@ -499,6 +505,10 @@ class Parser {
     const handler = this.commandHandlers[commandNameUpper];
 
     const transactionState = this.getTransactionState(socket);
+
+    console.log("Transactions", this.transactions);
+
+    console.log("Transaction State : ", transactionState);
 
     // Handle MULTI command separately to correctly initiate the transaction state.
     if (commandNameUpper === "MULTI") {
