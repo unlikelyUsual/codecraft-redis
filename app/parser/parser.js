@@ -530,7 +530,7 @@ class Parser {
 
     // For all other commands and clients, execute normally.
     const result = handler.call(this, args, socket);
-    return this.serialize(result);
+    return result ? this.serialize(result) : null;
   }
 }
 
