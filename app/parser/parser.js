@@ -376,23 +376,17 @@ class Parser {
 
   /**
    * Gets the transaction state for a socket, creating one if it doesn't exist
-   * @param {Socket} connection - The socket connection
+   * @param {Socket} socket - The socket connection
    * @returns {Object} Transaction state object
    */
-  getTransactionState(connection) {
-    const id = [
-      connection.remoteAddress,
-      connection.remoteFamily,
-      connection.remotePort,
-    ].join("|");
-
-    if (!this.transactions[id]) {
-      this.transactions[id] = {
+  getTransactionState(socket) {
+    if (!(socket in this.transactions)) {
+      this.transactions[socket] = {
         inTransaction: false,
         queuedCommands: [],
       };
     }
-    return this.transactions[id];
+    return this.transactions[socket];
   }
 
   /**
@@ -506,9 +500,13 @@ class Parser {
 
     const transactionState = this.getTransactionState(socket);
 
-    console.log("Transactions", this.transactions);
-
-    console.log("Transaction State : ", transactionState);
+    // Commands like BLPOP handle their own socket writes.
+    // If the handler returns null, we assume it has already written to the socket.
+    if (commandNameUpper === "BLPOP") {
+      const result = handler.call(this, args, socket);
+      // We return a special value to prevent further serialization
+      if (result === undefined) return;
+    }
 
     // Handle MULTI command separately to correctly initiate the transaction state.
     if (commandNameUpper === "MULTI") {
@@ -530,7 +528,7 @@ class Parser {
 
     // For all other commands and clients, execute normally.
     const result = handler.call(this, args, socket);
-    return result !== undefined ? this.serialize(result) : null;
+    return this.serialize(result);
   }
 }
 
