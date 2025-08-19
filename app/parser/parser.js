@@ -500,19 +500,25 @@ class Parser {
 
     const transactionState = this.getTransactionState(socket);
 
-    // If client is in a transaction, only allow EXEC and DISCARD to be executed immediately
+    // Handle MULTI command separately to correctly initiate the transaction state.
+    if (commandNameUpper === "MULTI") {
+      const result = handler.call(this, args, socket);
+      return this.serialize(result);
+    }
+
+    // If a transaction is active for this socket, queue the commands until EXEC or DISCARD.
     if (transactionState.inTransaction) {
       if (commandNameUpper === "EXEC" || commandNameUpper === "DISCARD") {
         const result = handler.call(this, args, socket);
+        // EXEC returns a raw array, so we don't need to re-serialize
         return this.serialize(result);
       } else {
-        // Queue all other commands
         transactionState.queuedCommands.push(command);
         return this.serialize("QUEUED");
       }
     }
 
-    // Handle MULTI command and all other commands for non-transactional clients
+    // For all other commands and clients, execute normally.
     const result = handler.call(this, args, socket);
     return this.serialize(result);
   }
